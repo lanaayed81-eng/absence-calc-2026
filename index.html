@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>حاسبة الغياب</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#1b2433;--muted:#667085;--line:#dde3ee;--accent:#2563eb;--ok:#15803d;--warn:#b45309;--bad:#b91c1c;--okbg:#dcfce7;--warnbg:#fef3c7;--badbg:#fee2e2;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f172a;--card:#1e293b;--text:#e8edf7;--muted:#94a3b8;--line:#334155;--accent:#60a5fa;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--okbg:#14352380;--warnbg:#42310a80;--badbg:#45121280}}
+:root[data-theme="dark"]{--bg:#0f172a;--card:#1e293b;--text:#e8edf7;--muted:#94a3b8;--line:#334155;--accent:#60a5fa;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--okbg:#14352380;--warnbg:#42310a80;--badbg:#45121280}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI",Tahoma,"Noto Sans Arabic",Arial,sans-serif;line-height:1.7}
+main{max-width:480px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.5rem;margin:8px 0 4px;text-align:center}
+p.sub{color:var(--muted);text-align:center;margin:0 0 20px;font-size:.95rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
+label{display:block;font-weight:600;margin:14px 0 6px;font-size:.92rem}
+input{width:100%;padding:12px;font-size:1rem;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font-family:inherit}
+input:focus{outline:2px solid var(--accent);border-color:transparent}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row label:first-child{margin-top:14px}
+button{width:100%;margin-top:18px;padding:13px;font-size:1.05rem;font-weight:700;border:0;border-radius:10px;background:var(--accent);color:#fff;cursor:pointer;font-family:inherit}
+#res{margin-top:16px;display:none}
+.status{padding:14px;border-radius:12px;text-align:center;font-weight:700;font-size:1.05rem}
+.ok{background:var(--okbg);color:var(--ok)}.warn{background:var(--warnbg);color:var(--warn)}.bad{background:var(--badbg);color:var(--bad)}
+.steps{margin-top:14px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:.92rem}
+.steps h3{margin:0 0 6px;font-size:.95rem}
+.steps p{margin:4px 0}
+.steps .eq{color:var(--muted)}
+.steps hr{border:0;border-top:1px dashed var(--line);margin:10px 0}
+</style>
+</head>
+<body>
+<main>
+<h1>حاسبة الغياب</h1>
+<p class="sub">احسب الحد المسموح وحد الحرمان لمقرراتك</p>
+<div class="card">
+<label for="n">اسم المقرر (اختياري)</label>
+<input id="n" type="text" placeholder="مثال: س">
+<div class="row">
+<div><label for="h">ساعات المقرر بالأسبوع</label><input id="h" type="number" min="1" step="any" value="2" inputmode="decimal"></div>
+<div><label for="w">مدة الترم (أسابيع)</label><input id="w" type="number" min="1" value="16" inputmode="numeric"></div>
+</div>
+<div class="row">
+<div><label for="p1">الحد المسموح بالغياب %</label><input id="p1" type="number" min="1" max="100" value="20" inputmode="decimal"></div>
+<div><label for="p2">حد الحرمان بعذر %</label><input id="p2" type="number" min="1" max="100" value="50" inputmode="decimal"></div>
+</div>
+<label for="a">ساعات غيابك حتى الآن</label>
+<input id="a" type="number" min="0" step="any" value="0" inputmode="decimal">
+<button id="go" type="button">احسب</button>
+
+<div id="res">
+<div id="st" class="status"></div>
+<div class="steps">
+<h3 id="title">طريقة الحساب</h3>
+<p>ساعات المقرر بالترم:</p>
+<p class="eq" id="e1"></p>
+<hr>
+<p>الحد المسموح بالغياب (<span id="q1"></span>%):</p>
+<p class="eq" id="e2"></p>
+<p id="n2"></p>
+<hr>
+<p>الحد الأقصى مع العذر (<span id="q2"></span>%):</p>
+<p class="eq" id="e3"></p>
+<p id="n3"></p>
+</div>
+</div>
+</div>
+</main>
+<script>
+function fmt(x){return (Math.round(x*100)/100).toString()}
+function calc(){
+  var g=function(i){return parseFloat(document.getElementById(i).value)};
+  var h=g('h'),w=g('w'),p1=g('p1'),p2=g('p2'),a=g('a'),name=document.getElementById('n').value.trim();
+  if(!(h>0&&w>0&&p1>0&&p2>0)||isNaN(a)||a<0)return;
+  var total=h*w, lim=total*p1/100, allowed=Math.floor(lim), max=total*p2/100;
+  var set=function(i,t){document.getElementById(i).textContent=t};
+  document.getElementById('res').style.display='block';
+  set('title','طريقة الحساب'+(name?' لمقرر «'+name+'»':''));
+  set('e1','= ['+fmt(h)+'] × ['+fmt(w)+'] = '+fmt(total)+' ساعة بالترم');
+  set('q1',fmt(p1)); set('q2',fmt(p2));
+  set('e2','= '+fmt(p1)+'% من '+fmt(total)+' = '+fmt(lim)+' ساعات غياب');
+  set('n2','الحرمان بعد غياب الساعة '+allowed+' (يلزم عذر بعدها)');
+  set('e3','= '+fmt(p2)+'% من '+fmt(total)+' = '+fmt(max)+' ساعة غياب');
+  set('n3','إذا تجاوز غيابك '+fmt(max)+' ساعة تُحرم ولا تُقبل الأعذار.');
+  var st=document.getElementById('st'), t;
+  if(a>max){st.className='status bad';t='محروم: تجاوزت '+fmt(max)+' ساعة ولا تُقبل الأعذار'}
+  else if(a>lim){st.className='status warn';t='تجاوزت الحد المسموح، يلزمك عذر. باقي '+fmt(max-a)+' ساعة قبل الحرمان النهائي'}
+  else{st.className='status ok';t='وضعك آمن، باقي لك '+fmt(lim-a)+' ساعة غياب مسموحة'}
+  st.textContent=t;
+}
+document.getElementById('go').addEventListener('click',calc);
+</script>
+</body>
+</html>
